@@ -1,0 +1,11 @@
+[build]
+target = "thumbv7em-none-eabihf"        # ARM Cortex-M4F and Cortex-M7F (with FPU support)
+
+[target.thumbv7em-none-eabihf]
+rustflags = [
+    "-C", "link-arg=--nmagic",
+    "-C", "link-arg=-Tt4link.x",
+    "-C", "link-arg=-Tdefmt.x",
+]
+
+runner = ["cargo", "run", "--package",  "tools", "--bin", "runner", "--"]
