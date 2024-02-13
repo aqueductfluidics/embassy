@@ -276,6 +276,24 @@ pub fn config() -> Config {
         config.rcc.apb2_pre = APBPrescaler::DIV2;
     }
 
+    #[cfg(feature = "stm32f303ze")]
+    {
+        use embassy_stm32::rcc::*;
+        config.rcc.hse = Some(Hse {
+            freq: Hertz(8_000_000),
+            mode: HseMode::Bypass,
+        });
+        config.rcc.pll = Some(Pll {
+            src: PllSource::HSE,
+            prediv: PllPreDiv::DIV1,
+            mul: PllMul::MUL9,
+        });
+        config.rcc.sys = Sysclk::PLL1_P;
+        config.rcc.ahb_pre = AHBPrescaler::DIV1;
+        config.rcc.apb1_pre = APBPrescaler::DIV2;
+        config.rcc.apb2_pre = APBPrescaler::DIV1;
+    }
+
     #[cfg(feature = "stm32f429zi")]
     {
         use embassy_stm32::rcc::*;
@@ -394,6 +412,10 @@ pub fn config() -> Config {
         config.rcc.apb4_pre = APBPrescaler::DIV2; // 100 Mhz
         config.rcc.voltage_scale = VoltageScale::Scale1;
         config.rcc.adc_clock_source = AdcClockSource::PLL2_P;
+        #[cfg(any(feature = "stm32h755zi"))]
+        {
+            config.rcc.supply_config = SupplyConfig::DirectSMPS;
+        }
     }
 
     #[cfg(any(feature = "stm32h7a3zi"))]

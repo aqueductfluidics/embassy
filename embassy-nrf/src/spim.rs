@@ -10,9 +10,10 @@ use core::task::Poll;
 use embassy_embedded_hal::SetConfig;
 use embassy_hal_internal::{into_ref, PeripheralRef};
 pub use embedded_hal_02::spi::{Mode, Phase, Polarity, MODE_0, MODE_1, MODE_2, MODE_3};
+pub use pac::spim0::config::ORDER_A as BitOrder;
 pub use pac::spim0::frequency::FREQUENCY_A as Frequency;
 
-use crate::chip::FORCE_COPY_BUFFER_SIZE;
+use crate::chip::{EASY_DMA_SIZE, FORCE_COPY_BUFFER_SIZE};
 use crate::gpio::sealed::Pin as _;
 use crate::gpio::{self, AnyPin, Pin as GpioPin, PselBits};
 use crate::interrupt::typelevel::Interrupt;
@@ -24,9 +25,9 @@ use crate::{interrupt, pac, Peripheral};
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 #[non_exhaustive]
 pub enum Error {
-    /// TX buffer was too long.
+    /// Supplied TX buffer overflows EasyDMA transmit buffer
     TxBufferTooLong,
-    /// RX buffer was too long.
+    /// Supplied RX buffer overflows EasyDMA receive buffer
     RxBufferTooLong,
     /// EasyDMA can only read from data memory, read only buffers in flash will fail.
     BufferNotInRAM,
@@ -41,6 +42,9 @@ pub struct Config {
     /// SPI mode
     pub mode: Mode,
 
+    /// Bit order
+    pub bit_order: BitOrder,
+
     /// Overread character.
     ///
     /// When doing bidirectional transfers, if the TX buffer is shorter than the RX buffer,
@@ -53,6 +57,7 @@ impl Default for Config {
         Self {
             frequency: Frequency::M1,
             mode: MODE_0,
+            bit_order: BitOrder::MSB_FIRST,
             orc: 0x00,
         }
     }
@@ -215,11 +220,19 @@ impl<'d, T: Instance> Spim<'d, T> {
 
         // Set up the DMA write.
         let (ptr, tx_len) = slice_ptr_parts(tx);
+        if tx_len > EASY_DMA_SIZE {
+            return Err(Error::TxBufferTooLong);
+        }
+
         r.txd.ptr.write(|w| unsafe { w.ptr().bits(ptr as _) });
         r.txd.maxcnt.write(|w| unsafe { w.maxcnt().bits(tx_len as _) });
 
         // Set up the DMA read.
         let (ptr, rx_len) = slice_ptr_parts_mut(rx);
+        if rx_len > EASY_DMA_SIZE {
+            return Err(Error::RxBufferTooLong);
+        }
+
         r.rxd.ptr.write(|w| unsafe { w.ptr().bits(ptr as _) });
         r.rxd.maxcnt.write(|w| unsafe { w.maxcnt().bits(rx_len as _) });
 
@@ -580,22 +593,22 @@ impl<'d, T: Instance> SetConfig for Spim<'d, T> {
         r.config.write(|w| {
             match mode {
                 MODE_0 => {
-                    w.order().msb_first();
+                    w.order().variant(config.bit_order);
                     w.cpol().active_high();
                     w.cpha().leading();
                 }
                 MODE_1 => {
-                    w.order().msb_first();
+                    w.order().variant(config.bit_order);
                     w.cpol().active_high();
                     w.cpha().trailing();
                 }
                 MODE_2 => {
-                    w.order().msb_first();
+                    w.order().variant(config.bit_order);
                     w.cpol().active_low();
                     w.cpha().leading();
                 }
                 MODE_3 => {
-                    w.order().msb_first();
+                    w.order().variant(config.bit_order);
                     w.cpol().active_low();
                     w.cpha().trailing();
                 }
