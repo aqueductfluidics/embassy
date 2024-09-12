@@ -24,8 +24,10 @@ bind_interrupts!(struct Irqs {
     feature = "stm32wba52cg",
     feature = "stm32l552ze",
     feature = "stm32h563zi",
+    feature = "stm32h503rb",
     feature = "stm32u5a5zj",
-    feature = "stm32u585ai"
+    feature = "stm32u585ai",
+    feature = "stm32h7s3l8"
 ))]
 bind_interrupts!(struct Irqs {
     HASH => hash::InterruptHandler<peripherals::HASH>;
@@ -33,7 +35,7 @@ bind_interrupts!(struct Irqs {
 
 #[embassy_executor::main]
 async fn main(_spawner: Spawner) {
-    let p: embassy_stm32::Peripherals = embassy_stm32::init(config());
+    let p: embassy_stm32::Peripherals = init();
     let mut hw_hasher = Hash::new(p.HASH, NoDma, Irqs);
 
     let test_1: &[u8] = b"as;dfhaslfhas;oifvnasd;nifvnhasd;nifvhndlkfghsd;nvfnahssdfgsdafgsasdfasdfasdfasdfasdfghjklmnbvcalskdjghalskdjgfbaslkdjfgbalskdjgbalskdjbdfhsdfhsfghsfghfgh";
